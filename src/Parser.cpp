@@ -14,6 +14,24 @@ std::unique_ptr<ScopeBlock> Parser::hand_over_AST() {
 void Parser::parse() {
     cursor = 0;
     entry_point = parseScope(false);
+        bool hasTextSection = false;
+    for (auto& child : entry_point->children) {
+        if (auto* section = dynamic_cast<SectionDefinition*>(child.get())) {
+            if (section->identifier == "text") {
+                hasTextSection = true;
+                break;
+            }
+        }
+    }
+
+    if (!hasTextSection) {
+        std::vector<std::unique_ptr<ASTNode>> sectionChildren;
+        sectionChildren.push_back(std::make_unique<Global>("_start"));
+        auto sectionScope = std::make_unique<ScopeBlock>(std::move(sectionChildren));
+        entry_point->children.push_back(
+            std::make_unique<SectionDefinition>("text", std::move(sectionScope))
+        );
+    }
 }
 std::unique_ptr<ScopeBlock> Parser::parseScope(bool require_brackets) {
     std::unique_ptr<ScopeBlock> scope = std::make_unique<ScopeBlock>();
