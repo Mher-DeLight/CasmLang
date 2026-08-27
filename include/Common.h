@@ -297,18 +297,19 @@ public:
 class VariableDefinition : public Statement {
 public:
     std::string identifier;
-    std::string memory;
+    std::unique_ptr<MemoryName> memory;
     std::unique_ptr<Expression> value;
     void accept(Visitor& visitor) override;
 
-    VariableDefinition(SourceLocation& src, std::string& memory_, const std::string& identifier_,
-                       std::unique_ptr<Expression> value_)
-        : Statement(src), memory(memory_), identifier(identifier_), value(std::move(value_)) {}
+    VariableDefinition(SourceLocation& src, std::unique_ptr<MemoryName> memory_,
+                       const std::string& identifier_, std::unique_ptr<Expression> value_)
+        : Statement(src), memory(std::move(memory_)), identifier(identifier_),
+          value(std::move(value_)) {}
 };
 class VariableReassignment : public Statement {
 public:
     std::string identifier;
-    std::string memory = "";
+    std::unique_ptr<MemoryName> memory;
     std::unique_ptr<Expression> value;
 
     void accept(Visitor& visitor) override;
@@ -380,10 +381,10 @@ public:
 };
 class FreeMemory : public Statement {
 public:
-    std::string memoryName;
+    std::unique_ptr<MemoryName> memoryName;
     void accept(Visitor& visitor) override;
 
-    FreeMemory(const std::string& memoryName_) : memoryName(memoryName_) {}
+    FreeMemory(std::unique_ptr<MemoryName> memoryName_) : memoryName(std::move(memoryName_)) {}
 };
 class IfStatement : public ConditionalStatement {
 public:

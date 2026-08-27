@@ -60,11 +60,11 @@ public:
 };
 class IrMovStmt : public IrStmt {
 public:
-    std::string memname;
+    std::unique_ptr<IrMemName> memname;
     std::unique_ptr<IrExpr> value;
 
-    IrMovStmt(const std::string& memname_, std::unique_ptr<IrExpr> value_)
-        : memname(memname_), value(std::move(value_)) {}
+    IrMovStmt(std::unique_ptr<IrMemName> memname_, std::unique_ptr<IrExpr> value_)
+        : memname(std::move(memname_)), value(std::move(value_)) {}
     void print(std::ostream& stream) const override {
         stream << "mov ";
         value->print(stream);

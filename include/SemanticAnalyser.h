@@ -12,12 +12,12 @@ enum class SymbolKind { Variable, Routine, Label };
 struct Symbol {
     std::string identifier;
     SymbolKind kind;
-    std::string memoryName;
+    MemoryName* memoryName;
     Statement* source;
     int paramCount = 0;
 
     Symbol(const std::string& identifier_, SymbolKind kind_, int paramCount_ = 0,
-           const std::string& memoryName_ = "", Statement* source_ = nullptr)
+           MemoryName* memoryName_ = nullptr, Statement* source_ = nullptr)
         : identifier(identifier_), kind(kind_), paramCount(paramCount_), memoryName(memoryName_),
           source(source_) {}
 };
@@ -32,6 +32,17 @@ class SemanticAnalyser : public Visitor {
         explicit Scope(Scope* parent_) : parent(parent_) {}
     };
     std::vector<uq<Scope>> stack;
+
+    std::unique_ptr<MemoryName> copyMemoryInformation(MemoryName* source) {
+        if (auto var = dynamic_cast<VariableReference*>(source)) {
+            return std::make_unique<VariableReference>(source->location, source->name);
+        } else if (auto var = dynamic_cast<RegisterName*>(source)) {
+            return std::make_unique<RegisterName>(source->location, source->name);
+        }
+
+        semaPanic("internal, cannot find valid conversion type for MemoryName*", source->location);
+        return std::make_unique<VariableReference>(source->location, "INVALID_CONVERSION_INTERNAL");
+    }
 
     void enter_scope();
     void exit_scope();

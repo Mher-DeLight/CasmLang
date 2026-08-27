@@ -39,9 +39,13 @@ void ocarlang::IrGenerator::visit(IntegerLiteral& node) {
 void ocarlang::IrGenerator::visit(BooleanLiteral& node) {};
 void ocarlang::IrGenerator::visit(VoidLiteral& node) {};
 void ocarlang::IrGenerator::visit(VariableDefinition& node) {
+    node.memory->accept(*this);
+    auto memory =
+        get_current_as<IrMemName>("internal, expected node.memory to convert to IrMemName");
+
     node.value->accept(*this);
     std::unique_ptr<ocarlang::IrExpr> expression = get_current_as<ocarlang::IrExpr>();
-    ir.push_back(std::make_unique<IrMovStmt>(node.memory, std::move(expression)));
+    ir.push_back(std::make_unique<IrMovStmt>(std::move(memory), std::move(expression)));
 };
 void ocarlang::IrGenerator::visit(BinaryExpression& node) {};
 void ocarlang::IrGenerator::visit(RoutineCallExpr& node) {};
@@ -50,9 +54,13 @@ void ocarlang::IrGenerator::visit(VariableReference& node) {
 };
 void ocarlang::IrGenerator::visit(UnaryExpression& node) {};
 void ocarlang::IrGenerator::visit(VariableReassignment& node) {
+    node.memory->accept(*this);
+    auto memory = get_current_as<IrMemName>(
+        "internal, expected variableReassignment.memory to convert to IrMemName");
+
     node.value->accept(*this);
     std::unique_ptr<ocarlang::IrExpr> expression = get_current_as<ocarlang::IrExpr>();
-    ir.push_back(std::make_unique<IrMovStmt>(node.memory, std::move(expression)));
+    ir.push_back(std::make_unique<IrMovStmt>(std::move(memory), std::move(expression)));
 };
 void ocarlang::IrGenerator::visit(RoutineCallStmt& node) {
     ir.push_back(std::make_unique<IrRtnCall>(node.identifier));
@@ -135,12 +143,12 @@ void ocarlang::IrGenerator::visit(ArithmeticOperation& node) {
 }
 void ocarlang::IrGenerator::visit(RawAssignment& node) {
     node.left->accept(*this);
-    auto leftName = get_current_as<IrMemName>()->name;
+    auto left = get_current_as<IrMemName>();
 
     node.right->accept(*this);
     auto right = get_current_as<IrExpr>();
 
-    ir.push_back(std::make_unique<IrMovStmt>(leftName, std::move(right)));
+    ir.push_back(std::make_unique<IrMovStmt>(std::move(left), std::move(right)));
 }
 void ocarlang::IrGenerator::visit(RawLabel& node) {
     ir.push_back(std::make_unique<IrLabelStmt>(node.labelname));

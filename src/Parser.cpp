@@ -92,10 +92,8 @@ std::unique_ptr<Statement> Parser::parseStatement() {
     }
 }
 std::unique_ptr<VariableDefinition> Parser::parseVariableDeclaration() {
-    ocarlang::Token tkn =
-        eat(TokenType::KeywordRegister, "expected memory name for variable declaration");
-
-    std::string type_string = tkn.lexeme;
+    auto tkn = peek();
+    std::unique_ptr<MemoryName> memname = parseMemoryName();
 
     std::string identifier =
         eat(TokenType::Identifier, "expected identifier for variable declaration").lexeme;
@@ -105,7 +103,7 @@ std::unique_ptr<VariableDefinition> Parser::parseVariableDeclaration() {
     std::unique_ptr<Expression> value = parseExpression();
     eat(TokenType::Semicolon, "expected semi colon after variable declaration");
 
-    return std::make_unique<VariableDefinition>(tkn.location, type_string, identifier,
+    return std::make_unique<VariableDefinition>(tkn.location, std::move(memname), identifier,
                                                 std::move(value));
 }
 std::unique_ptr<RoutineCallExpr> Parser::parseFunctionCallExpr() {
@@ -222,10 +220,9 @@ std::unique_ptr<FreeMemory> Parser::parseFreeMemory() {
     if (auto varref = dynamic_cast<VariableReference*>(mem.get()))
         parserPanic("cannot free variable reference to \"" + varref->identifier +
                     "\"; consider using 'delete'");
-    auto memname = mem->name;
     eat(TokenType::Semicolon, "expected semicolon afted free statement");
 
-    return std::make_unique<FreeMemory>(memname);
+    return std::make_unique<FreeMemory>(std::move(mem));
 }
 std::unique_ptr<MemoryName> Parser::parseMemoryName() {
     ocarlang::Token tkn = peek();

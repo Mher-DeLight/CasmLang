@@ -100,7 +100,7 @@ const Symbol* SemanticAnalyser::getSymbolFromMemory(const std::string& memname) 
     Scope* scp = stack.back().get();
     while (scp != nullptr) {
         for (auto& pair : scp->symbols) {
-            if (pair.second->memoryName == memname) {
+            if (pair.second->memoryName->name == memname) {
                 return pair.second.get();
             }
         }
@@ -167,13 +167,13 @@ void SemanticAnalyser::visit(VariableReference& node) {
         semaPanic("\"" + node.identifier + "\" is used as a variable even though it is a function",
                   node.location);
     }
-    std::string memname = getSymbol(node.identifier)->memoryName;
-    if (memname.empty()) {
+    MemoryName* memory = getSymbol(node.identifier)->memoryName;
+    if (memory == nullptr) {
         semaPanic("cannot refernce variable \"" + node.identifier +
                       "\" which is not assigned to any memory",
                   node.location);
     }
-    node.name = memname;
+    node.name = memory->name;
     analyseExpression(&node);
 }
 void SemanticAnalyser::visit(VariableReassignment& node) {
@@ -185,22 +185,24 @@ void SemanticAnalyser::visit(VariableReassignment& node) {
         semaPanic("\"" + node.identifier + "\" is used as a variable even though it is a function",
                   node.location);
     }
-    std::string memname = getSymbol(node.identifier)->memoryName;
-    if (memname.empty()) {
+    node.memory->accept(*this);
+    MemoryName* memory = getSymbol(node.identifier)->memoryName;
+    if (memory == nullptr) {
         semaPanic("Could not resolve memory name for identifier \"" + node.identifier + "\"",
                   node.location);
     }
-    node.memory = memname;
+    node.memory = copyMemoryInformation(memory);
     node.value->accept(*this);
 }
 void SemanticAnalyser::visit(VariableDefinition& node) {
-    auto othermem = getSymbolFromMemory(node.memory);
+    node.memory->accept(*this);
+    auto othermem = getSymbolFromMemory(node.memory->name);
     if (othermem) {
-        semaPanic("cannot reassign memory \"" + node.memory + "\" to \"" + node.identifier +
+        semaPanic("cannot reassign memory \"" + node.memory->name + "\" to \"" + node.identifier +
                   "\"; it is already taken by \"" + othermem->identifier + "\"");
     }
     node.value->accept(*this);
-    addSymbol(Symbol(node.identifier, SymbolKind::Variable, 0, node.memory, &node));
+    addSymbol(Symbol(node.identifier, SymbolKind::Variable, 0, node.memory.get(), &node));
 }
 void SemanticAnalyser::visit(UnaryExpression& node) {
     node.value->accept(*this);
@@ -226,11 +228,11 @@ void SemanticAnalyser::visit(RoutineCallStmt& node) {
     symbol->source->accept(*this);
 }
 void SemanticAnalyser::visit(RoutineDefinition& node) {
-    addSymbol(Symbol(node.identifier, SymbolKind::Routine, 0, "", &node));
+    addSymbol(Symbol(node.identifier, SymbolKind::Routine, 0, nullptr, &node));
     node.scope->accept(*this);
 }
 void SemanticAnalyser::visit(SectionDefinition& node) {
-    addSymbol(Symbol(node.identifier, SymbolKind::Routine, 0, "", &node));
+    addSymbol(Symbol(node.identifier, SymbolKind::Routine, 0, nullptr, &node));
 }
 void SemanticAnalyser::visit(Global& node) {
     if (!symbolExists(node.identifier))
@@ -242,7 +244,7 @@ void SemanticAnalyser::visit(Global& node) {
     }
 }
 void SemanticAnalyser::visit(RoutineDeclaration& node) {
-    addSymbol(Symbol(node.identifier, SymbolKind::Routine, 0, "", &node));
+    addSymbol(Symbol(node.identifier, SymbolKind::Routine, 0, nullptr, &node));
 }
 void SemanticAnalyser::visit(AsmInstruction& node) {}
 void SemanticAnalyser::visit(DeleteSymbol& node) {
@@ -253,10 +255,10 @@ void SemanticAnalyser::visit(DeleteSymbol& node) {
     removeSymbol(node.identifier);
 }
 void SemanticAnalyser::visit(FreeMemory& node) {
-    auto symbol = getSymbolFromMemory(node.memoryName);
+    auto symbol = getSymbolFromMemory(node.memoryName->name);
 
     if (!symbol) {
-        semaPanic("Cannot free memory \"" + node.memoryName + "\"; it is not occupied");
+        semaPanic("Cannot free memory \"" + node.memoryName->name + "\"; it is not occupied");
         return;
     }
 
@@ -273,6 +275,7 @@ void SemanticAnalyser::visit(Compare& node) {
 
     for (auto& child : cdr) { // no need to copy logic, iterate through childreen
         if (auto memname = dynamic_cast<MemoryName*>(child)) {
+            // == VARIABLE REFERENCE ==
             if (auto var = dynamic_cast<VariableReference*>(child)) {
                 if (!symbolExists(var->identifier))
                     semaPanic("can't compare variable \"" + var->identifier +
@@ -284,11 +287,15 @@ void SemanticAnalyser::visit(Compare& node) {
                                   "\"; it is not a variable",
                               var->location);
 
-                memname->name = getSymbol(var->identifier)->memoryName;
-            } else if (auto reg = dynamic_cast<RegisterName*>(child)) {
+                memname->name = getSymbol(var->identifier)->memoryName->name;
+            }
+            // == REGISTER NAME ==
+            else if (auto reg = dynamic_cast<RegisterName*>(child)) {
                 memname->name = reg->name;
             }
-        } else if (auto reg = dynamic_cast<IntegerLiteral*>(child)) {
+        }
+        // ====== INTEGER LITERAL ======
+        else if (auto reg = dynamic_cast<IntegerLiteral*>(child)) {
         } else {
             semaPanic("invalid comparison node in compare", child->location);
         }
@@ -315,7 +322,7 @@ void SemanticAnalyser::visit(RawLabel& node) {
                   "\"; another symbol with the same name is already declared, and labels do not "
                   "support shadowing");
 
-    addSymbol(Symbol(node.labelname, SymbolKind::Label, 0, "", &node));
+    addSymbol(Symbol(node.labelname, SymbolKind::Label, 0, nullptr, &node));
 }
 void SemanticAnalyser::visit(JumpStatement& node) {
     auto symbol = getSymbol(node.labelname);
