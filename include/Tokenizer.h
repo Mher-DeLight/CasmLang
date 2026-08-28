@@ -36,6 +36,9 @@ private:
     char current() const;
     bool is_character(const char c);
 
+    void parse_comment();
+    void parse_multiline_comment();
+
     // == PREPROCESSOR ==
     void prcs_process();
     void prcs_process_include();

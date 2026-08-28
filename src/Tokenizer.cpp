@@ -80,6 +80,23 @@ bool Tokenizer::is_character(const char c) {
     return (std::string_view(".,:;-><+-/=!&*(){}[]#|").find(c) != std::string_view::npos);
 }
 
+void Tokenizer::parse_comment()
+{
+    while (!eof() && (current() != '\n')) {
+        advance();
+    }
+}
+
+void Tokenizer::parse_multiline_comment()
+{
+    while (!eof() && !(current() == '*' && peek() == '/'))
+        advance();
+    if (eof())
+        return;
+    // encountered the ending "*/" sequence
+    advance(2);
+}
+
 void Tokenizer::tokenize(const std::string& c) {
     code = c;
     cursor = 0;
@@ -97,18 +114,11 @@ void Tokenizer::tokenize(const std::string& c) {
             next;
         }
         if (current() == '/' && peek() == '/') {
-            while (!eof() && (current() != '\n')) {
-                advance();
-            }
+            parse_comment();
             continue;
         }
         if (current() == '/' && peek() == '*') {
-            while (!eof() && !(current() == '*' && peek() == '/'))
-                advance();
-            if (eof())
-                continue;
-            // encountered the ending "*/" sequence
-            advance(2);
+            parse_multiline_comment();
             continue;
         }
         if (current() == '#') {
@@ -136,6 +146,17 @@ void Tokenizer::tokenize(const std::string& c) {
             advance();
             std::string str;
             while (!eof() && current() != '\n') {
+                if(current() == '/' && peek() == '/')
+                {
+                    parse_comment();
+                    break;
+                }
+                else if(current() == '/' && peek() == '*')
+                {
+                    parse_multiline_comment();
+                    break;
+                }
+
                 assert_validity(cursor);
                 str += current();
                 advance();
