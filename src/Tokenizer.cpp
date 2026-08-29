@@ -80,15 +80,13 @@ bool Tokenizer::is_character(const char c) {
     return (std::string_view(".,:;-><+-/=!&*(){}[]#|").find(c) != std::string_view::npos);
 }
 
-void Tokenizer::parse_comment()
-{
+void Tokenizer::parse_comment() {
     while (!eof() && (current() != '\n')) {
         advance();
     }
 }
 
-void Tokenizer::parse_multiline_comment()
-{
+void Tokenizer::parse_multiline_comment() {
     while (!eof() && !(current() == '*' && peek() == '/'))
         advance();
     if (eof())
@@ -146,13 +144,10 @@ void Tokenizer::tokenize(const std::string& c) {
             advance();
             std::string str;
             while (!eof() && current() != '\n') {
-                if(current() == '/' && peek() == '/')
-                {
+                if (current() == '/' && peek() == '/') {
                     parse_comment();
                     break;
-                }
-                else if(current() == '/' && peek() == '*')
-                {
+                } else if (current() == '/' && peek() == '*') {
                     parse_multiline_comment();
                     break;
                 }
