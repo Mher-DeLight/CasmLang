@@ -22,7 +22,6 @@ private:
 
     int cursor = 0;
     int row = 1;
-    int borrowedlines = 0;
     int column = 1;
 
     TokenType get_word_type(const std::string& str, bool allow_identifiers = true);

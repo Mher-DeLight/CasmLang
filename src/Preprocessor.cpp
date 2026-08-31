@@ -46,7 +46,7 @@ void Tokenizer::prcs_process_include() {
 
     if (!fs::exists(linkfile)) {
         panic("Preprocessor: couldn't find file \"" + arg + ".ocar\" in standard library at line " +
-              std::to_string(row - borrowedlines));
+              std::to_string(row));
     }
 
     std::ifstream file(linkfile);
@@ -75,7 +75,7 @@ void Tokenizer::prcs_process_include() {
      */
     for (char ch: included){
         if (ch=='\n'){
-            borrowedlines++;
+            row--;
         }
     }
 
