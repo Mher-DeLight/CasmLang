@@ -73,6 +73,12 @@ void Tokenizer::prcs_process_include() {
      * we intentionally do NOT advance() here. the next iteration of
      * tokenize() will process the first character of the included file.
      */
+    for (char ch: included){
+        if (ch=='\n'){
+            row--;
+        }
+    }
+
     code.insert(cursor, included);
     /* we don't have to remove the #include line because we're not gonna see it again anyway
      * if preprocessor jumps are ever implemented, which i hope they aren't, we might have to remove
